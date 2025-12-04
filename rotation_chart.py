@@ -353,9 +353,9 @@ def generate_rotation_chart(game_id):
     num_periods = len(periods)
 
     if num_periods == 2:
-        fig, axes = plt.subplots(1, num_periods, figsize=(12, 10), sharey=True)
+        fig, axes = plt.subplots(1, num_periods, figsize=(22, 10), sharey=True)
     else:
-        fig, axes = plt.subplots(1, num_periods, figsize=(20, 12), sharey=True)
+        fig, axes = plt.subplots(1, num_periods, figsize=(22, 10), sharey=True)
 
     if num_periods == 1:
         axes = [axes]
@@ -421,7 +421,7 @@ def generate_rotation_chart(game_id):
     # -----------------------------------------------------------
     # Final layout + return fig (instead of plt.show)
     # -----------------------------------------------------------
-    plt.tight_layout()
+    plt.tight_layout(pad=3.0)
     return fig
 
 
