@@ -100,16 +100,12 @@ def generate_rotation_chart(game_id):
 
     subData["checkname"] = subData["checkname"].apply(clean_name)
 
-    print("Cleaned starter players:", starter_players)
-    print("Cleaned checkname column:", subData["checkname"].unique())
-
     # -----------------------------------------------------------
     # Create SUB IN rows at 20:00 for starters
     # -----------------------------------------------------------
     new_rows = []
     for starter in starter_players:
         if starter not in subData["checkname"].unique():
-            print(f"Warning: {starter} not found in subData['checkname']")
             continue
 
         starter_data = subData[subData["checkname"] == starter].iloc[0]
@@ -239,8 +235,8 @@ def generate_rotation_chart(game_id):
     # Helper functions (your originals preserved)
     # -----------------------------------------------------------
     def time_to_seconds(time_str):
-    minutes, seconds = map(int, time_str.split(":"))
-    return minutes * 60 + seconds
+        minutes, seconds = map(int, time_str.split(":"))
+        return minutes * 60 + seconds
 
     def seconds_to_time(seconds):
         minutes = seconds // 60
@@ -422,7 +418,6 @@ def generate_rotation_chart(game_id):
             axes[i].set_aspect('90')
     
     plt.tight_layout()
-    plt.show()
     return fig
 
 
