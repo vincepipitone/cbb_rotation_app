@@ -421,7 +421,16 @@ def generate_rotation_chart(game_id):
     # -----------------------------------------------------------
     # Final layout + return fig (instead of plt.show)
     # -----------------------------------------------------------
-    plt.tight_layout(pad=3.0)
+    
+    for i, period in enumerate(periods):
+        if period > 2:
+            # Overtime period: different aspect ratio
+            axes[i].set_aspect('23')  # smaller ratio for OT
+        else:
+            # Regular period: original aspect ratio
+            axes[i].set_aspect('90')
+    
+    plt.tight_layout()
     return fig
 
 
