@@ -239,14 +239,14 @@ def generate_rotation_chart(game_id):
     # Helper functions (your originals preserved)
     # -----------------------------------------------------------
     def time_to_seconds(time_str):
-        minutes, seconds = map(int, time_str.split(":"))
-        return minutes * 60 + seconds
+    minutes, seconds = map(int, time_str.split(":"))
+    return minutes * 60 + seconds
 
     def seconds_to_time(seconds):
         minutes = seconds // 60
         seconds = seconds % 60
         return f"{minutes}:{seconds:02}"
-
+    
     def plot_media_timeouts(ax, media_timeouts, period_end_time, base_offset=-25, offset_step=.1):
         for i, timeout in media_timeouts.iterrows():
             timeout_time = time_to_seconds(timeout['time'])
@@ -257,13 +257,13 @@ def generate_rotation_chart(game_id):
             ax.text(timeout_time, label_y, timeout_str,
                     color='black', fontsize=8,
                     verticalalignment='center', horizontalalignment='right')
-
+    
     def plot_half(ax, period, period_end_time):
         for player in ordered_players:
             player_data = rotation_data[
                 (rotation_data["checkname"] == player) & (rotation_data["period"] == str(period))
             ].sort_values(by="time", ascending=False)
-
+    
             on_time = None
             for _, row in player_data.iterrows():
                 if row["type"] == "IN":
@@ -277,7 +277,7 @@ def generate_rotation_chart(game_id):
                         facecolors=team_colors[row["team"]]
                     )
                     on_time = None
-
+    
             if on_time is not None:
                 player_y = player_positions[player]
                 ax.broken_barh(
@@ -285,8 +285,8 @@ def generate_rotation_chart(game_id):
                     (player_y - 0.2, 0.4),
                     facecolors=team_colors[row["team"]]
                 )
-
-            # Fouls:
+    
+            # Plot fouls
             player_foul_data = allGameData[
                 (allGameData["checkname"] == player) &
                 (allGameData["action"] == "FOUL") &
@@ -296,118 +296,113 @@ def generate_rotation_chart(game_id):
                 foul_time = time_to_seconds(foul_row["time"])
                 foul_y = player_positions[player]
                 foul_time = period_end_time - foul_time
-                ax.scatter(foul_time, foul_y, color="black", s=30, marker="x", zorder=5)
-
+                ax.scatter(foul_time, foul_y, color="black", label="Foul", s=30, marker="x", zorder=5)
+    
     def adjust_y_axis(ax, player_labels, player_y_positions):
         ax.set_yticks(player_y_positions)
         ax.set_yticklabels(player_labels, fontsize=10)
         N = len(player_labels)
         ax.set_ylim(-0.5, N - 0.5)
         ax.set_ylabel("Players")
-
-    # -----------------------------------------------------------
-    # Build rotation_data (unchanged)
-    # -----------------------------------------------------------
+    
+    # Assume subData and allGameData are available DataFrames
     rotation_data = subData[
         (subData["action"] == "SUB") &
         (subData["type"].isin(["IN", "OUT"]))
     ].sort_values(by=["team", "checkname", "period", "time"])
-
+    
     teams = rotation_data["team"].unique()
-
-    # Identify starters (unchanged)
+    
+    # Identify starters
     team_players = {}
     for team in teams:
-        team_data_period1 = rotation_data[
-            (rotation_data["team"] == team) &
-            (rotation_data["period"] == '1')
-        ]
+        team_data_period1 = rotation_data[(rotation_data["team"] == team) & (rotation_data["period"] == '1')]
         starters = team_data_period1[
-            (team_data_period1["time"] == "20:00") &
-            (team_data_period1["type"] == "IN")
+            (team_data_period1["time"] == "20:00") & (team_data_period1["type"] == "IN")
         ]["checkname"].unique().tolist()
-
+    
         all_team_players = rotation_data[rotation_data["team"] == team]["checkname"].unique().tolist()
         bench = [p for p in all_team_players if p not in starters]
         team_players[team] = starters + bench
-
+    
     ordered_players = (team_players[teams[0]] + team_players[teams[1]])[::-1]
+    
     player_positions = {player: idx * 0.5 for idx, player in enumerate(ordered_players)}
-
+    
     team_colors = {
         teams[0]: "yellow",
         teams[1]: "green",
     }
-
+    
     media_timeouts = allGameData[
         (allGameData["checkname"] == "TEAM") &
         (allGameData["action"] == "TIMEOUT") &
         (allGameData["type"] == "MEDIA")
     ]
-
-    # -----------------------------------------------------------
-    # Build figure and axes (preserved)
-    # -----------------------------------------------------------
+    
+    # Determine the distinct periods in the game
     periods = sorted(rotation_data["period"].unique(), key=lambda x: int(x))
     periods = [int(p) for p in periods]
+    
     num_periods = len(periods)
-
     if num_periods == 2:
-        fig, axes = plt.subplots(1, num_periods, figsize=(22, 10), sharey=True)
+        fig, axes = plt.subplots(1, num_periods, figsize=(12, 10), sharey=True)
     else:
-        fig, axes = plt.subplots(1, num_periods, figsize=(22, 10), sharey=True)
-
+        fig, axes = plt.subplots(1, num_periods, figsize=(20, 12), sharey=True)
+    
     if num_periods == 1:
         axes = [axes]
-
+    
     for i, period in enumerate(periods):
-        current_period_end_time = 300 if period > 2 else 1200
-
-        plot_half(axes[i], period, current_period_end_time)
+        # If period > 2, it's overtime (5 minutes = 300 seconds)
+        # Otherwise, standard period = 20 minutes = 1200 seconds
+        if period > 2:
+            current_period_end_time = 300
+        else:
+            current_period_end_time = 1200
+    
+        plot_half(axes[i], period, period_end_time=current_period_end_time)
         axes[i].set_title(f"Period {period}")
         axes[i].set_xlim(0, current_period_end_time)
-
+        # Set x-ticks dynamically based on period length
         tick_interval = current_period_end_time // 4
         axes[i].set_xticks(range(0, current_period_end_time + 1, tick_interval))
-        axes[i].set_xticklabels([
-            seconds_to_time(t)
-            for t in range(current_period_end_time, -1, -tick_interval)
-        ])
+        axes[i].set_xticklabels([seconds_to_time(t) for t in range(current_period_end_time, -1, -tick_interval)])
         axes[i].set_xlabel("Game Time (MM:SS)")
         axes[i].grid(axis="x", linestyle="--", alpha=0.7)
-
+    
     player_labels = ordered_players
     player_y_positions = [player_positions[p] for p in player_labels]
-
+    
     for ax in axes:
         adjust_y_axis(ax, player_labels, player_y_positions)
-
-    # -----------------------------------------------------------
-    # Plot media timeouts
-    # -----------------------------------------------------------
+    
+    # Plot media timeouts for each period
     for i, period in enumerate(periods):
         period_str = str(period)
         period_media_timeouts = media_timeouts[media_timeouts['period'] == period_str]
-
+    
         if period == 1:
-            plot_media_timeouts(
-                axes[i], period_media_timeouts,
-                1200, base_offset=0, offset_step=0.02
-            )
+            plot_media_timeouts(axes[i], period_media_timeouts,
+                                1200 if period <= 2 else 300,
+                                base_offset=0, offset_step=0.02)
         else:
+            # Use the same logic for period_end_time here as well
             current_period_end_time = 300 if period > 2 else 1200
-            plot_media_timeouts(
-                axes[i], period_media_timeouts,
-                current_period_end_time,
-                base_offset=0, offset_step=0.01
-            )
-
-    # -----------------------------------------------------------
-    # Set legend
-    # -----------------------------------------------------------
+            plot_media_timeouts(axes[i], period_media_timeouts,
+                                current_period_end_time,
+                                base_offset=0, offset_step=0.01)
+    
+    N = len(player_labels)
+    top_bar_edge = (N-1)*0.5 + 0.2
+    for ax in axes:
+        ax.set_ylim(-0.5, top_bar_edge)
+    
+    # Create dummy handles for legend
     media_timeout_handle = mlines.Line2D([], [], color='black', linestyle=':', label='Media Timeout')
     foul_handle = mlines.Line2D([], [], color='black', marker='x', linestyle='None', label='Foul')
-
+    
+    # Adjust legend positioning based on number of periods
     if num_periods == 2:
         fig.legend(handles=[foul_handle, media_timeout_handle],
                    loc='lower center', bbox_to_anchor=(0.58, 0.22), ncol=2)
@@ -417,10 +412,6 @@ def generate_rotation_chart(game_id):
     else:
         fig.legend(handles=[foul_handle, media_timeout_handle],
                    loc='lower center', bbox_to_anchor=(0.55, 0.3), ncol=2)
-
-    # -----------------------------------------------------------
-    # Final layout + return fig (instead of plt.show)
-    # -----------------------------------------------------------
     
     for i, period in enumerate(periods):
         if period > 2:
@@ -428,9 +419,10 @@ def generate_rotation_chart(game_id):
             axes[i].set_aspect('23')  # smaller ratio for OT
         else:
             # Regular period: original aspect ratio
-            axes[i].set_aspect('180')
+            axes[i].set_aspect('90')
     
     plt.tight_layout()
+    plt.show()
     return fig
 
 
