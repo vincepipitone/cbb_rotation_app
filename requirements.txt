@@ -1,4 +1,6 @@
-pandas
-matplotlib
-requests
 streamlit
+pandas
+numpy
+requests
+scikit-learn
+matplotlib
